@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+torch
+transformers
+bitsandbytes
+sentence-transformers
+faiss-cpu
+python-multipart
+pypdf
+accelerate
+pydantic
+faiss

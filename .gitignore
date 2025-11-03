@@ -1,0 +1,42 @@
+# Python Virtual Environments
+venv/
+.venv/
+env/
+.env/
+__pycache__/
+
+# Python bytecode
+*.py[cod]
+*$py.class
+
+# IDE / Editor configuration
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+logs/
+
+# Local secrets & config (good practice)
+.env
+*.env
+
+# Temporary files from PDF processing
+*.tmp
+*.temp
+
+# Large model files (in case you ever download them locally)
+*.pth
+*.safetensors
+*.bin
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
