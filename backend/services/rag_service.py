@@ -10,6 +10,9 @@ from sentence_transformers import SentenceTransformer
 from utils.text_cleaner import chunk_text, extract_numbered_questions
 from groq import Groq, APIError
 
+from dotenv import load_dotenv
+load_dotenv()
+
 # --- Logger ---
 logger = logging.getLogger("app")
 
@@ -35,6 +38,10 @@ def generate_questions_with_rag(resume: str, jd: str, role: str) -> tuple[list[s
     Wraps prompts in Gemma-2's required chat tokens.
     """
     logger.info("Starting RAG generation...")
+    
+    if groq_client is None:
+        logger.error("Groq client is not initialized. Check API key.")
+        return {"experience_based": ["Server Error: Groq client not initialized."], "gap_analysis": []}, []
     
     # 1. Text Chunking
     resume_chunks = chunk_text(resume)
