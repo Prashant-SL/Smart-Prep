@@ -1,4 +1,6 @@
 [build]
-  # This section tells Netlify to run the build command
-  # only if files inside the "frontend" folder have changed.
-  ignore = "git diff --quiet HEAD^ HEAD frontend/"
+  # Netlify runs this command. If the command succeeds (exit code 0), 
+  # the build is skipped. If it fails (exit code 1), the build continues.
+  # This command checks if anything has changed in the 'frontend/' directory 
+  # compared to the last successful deploy's commit hash ($CACHED_COMMIT_REF).
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF frontend/"
