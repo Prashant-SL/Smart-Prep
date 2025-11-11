@@ -1,0 +1,4 @@
+[build]
+  # This section tells Netlify to run the build command
+  # only if files inside the "frontend" folder have changed.
+  ignore = "git diff --quiet HEAD^ HEAD frontend/"
