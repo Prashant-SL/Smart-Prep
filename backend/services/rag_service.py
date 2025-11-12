@@ -20,7 +20,7 @@ GROQ_CHAT_MODEL = "llama-3.1-8b-instant"
 
 
 
-embedding_model_name = "sentence-transformers/paraphrase-MiniLM-L3-v2"
+embedding_model_name = "sentence-transformers/all-MiniLM-L6-v2"
 embedding_model = SentenceTransformer(embedding_model_name, device = 'cuda' if torch.cuda.is_available() else 'cpu')
 
 try:
