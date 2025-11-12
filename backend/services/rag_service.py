@@ -20,7 +20,7 @@ GROQ_CHAT_MODEL = "llama-3.1-8b-instant"
 
 
 
-embedding_model_name = "sentence-transformers/all-MiniLM-L6-v2"
+embedding_model_name = "sentence-transformers/paraphrase-MiniLM-L3-v2"
 embedding_model = SentenceTransformer(embedding_model_name, device = 'cuda' if torch.cuda.is_available() else 'cpu')
 
 try:
@@ -143,7 +143,7 @@ def generate_questions_with_rag(resume: str, jd: str, role: str) -> tuple[list[s
                     ]
                     try:
                         output = groq_client.chat.completions.create(
-                            messages = messages, model = GROQ_CHAT_MODEL, temperature = 0.0, max_tokens = 100
+                            messages = messages, model = GROQ_CHAT_MODEL, temperature = 0.2, max_tokens = 100
                         )
                         generated_text = output.choices[0].message.content
                         questions = extract_numbered_questions(generated_text, max_questions=1)
@@ -152,7 +152,6 @@ def generate_questions_with_rag(resume: str, jd: str, role: str) -> tuple[list[s
                             gap_questions.extend(questions)
                     except APIError as e:
                         logger.error(f"Groq API error in Gap Loop (Question): {e}")
-                        # Don't "continue" yet, we might still be able to generate a suggestion
                 
                 # 2b. Generate SUGGESTION (if under limit)
                 if len(all_suggestions) < MAX_SUGGESTIONS:
