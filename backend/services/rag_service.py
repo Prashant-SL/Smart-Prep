@@ -26,6 +26,9 @@ try:
 except Exception as error:
     logger.error(f"Error initalizing Groq: {error}")
     groq_client = None
+
+def _cosine_sim(a: np.ndarray, b: np.ndarray) -> float:
+    return float(np.dot(a, b) / (norm(a) * norm(b)))
     
 def generate_questions_with_rag(resume: str, jd: str, role: str) -> tuple[list[str], list[str]]:
     """
@@ -74,9 +77,6 @@ def generate_questions_with_rag(resume: str, jd: str, role: str) -> tuple[list[s
     # --- 3. NEW: Combined RAG Loop (Match, Gap, Suggestion) ---
     logger.info("--- Starting Combined RAG Loop ---")
     
-    def cosine_similarity(a, b):
-        return np.dot(a, b) / (norm(a) * norm(b))
-    
     for i, jd_chunk in enumerate(jd_chunks):
         try:
             # Check if all our limits are already met
@@ -86,16 +86,9 @@ def generate_questions_with_rag(resume: str, jd: str, role: str) -> tuple[list[s
                 logger.info("All generation limits reached. Breaking loop early.")
                 break
 
-            query_emb_list = list(embedding_model.embed([jd_chunk]))
-            query_embedding = np.array(query_emb_list, dtype=np.float32) # Shape (1, dim)
-            query_emb_flat = query_embedding[0]
-            
-            similarities = [cosine_similarity(query_emb_flat, r) for r in resume_embeddings]
-            best_idx = int(np.argmax(similarities))
-            best_score = similarities[best_idx]
-            
-            query_emb_list = list(embedding_model.embed([jd_chunk]))
-            query_embedding = np.array(query_emb_list, dtype=np.float32)
+            query_embedding = np.array(
+                list(embedding_model.embed([jd_chunk])), dtype=np.float32
+            )
 
             distances, indices = index.search(query_embedding, k=1)
             

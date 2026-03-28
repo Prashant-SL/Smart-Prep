@@ -1,9 +1,22 @@
+# ✅ FIXED render.yaml
 services:
   - type: web
     name: smart-prep-api
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port 10000
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11
+        value: "3.11.0"
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_CHAT_MODEL
+        value: llama-3.1-8b-instant
+      - key: TEXT_EMBEDDING_MODEL
+        value: BAAI/bge-small-en-v1.5
+      - key: ALLOWED_ORIGINS
+        value: https://your-app.vercel.app
+      - key: ALLOWED_METHODS
+        value: "*"
+      - key: ALLOWED_HEADERS
+        value: "*"
