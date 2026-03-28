@@ -23,7 +23,7 @@ This project is more than just a simple prompt. It uses a complete RAG pipeline 
 2.  **Embed:** The *resume* chunks are converted into numerical vectors (embeddings) using a `sentence-transformers` model.
 3.  **Index:** These resume vectors are loaded into a high-speed, in-memory `faiss-cpu` vector store, making them searchable.
 4.  **Retrieve (The "R" in RAG):** The app iterates through each *job description* chunk and treats it as a search query against the resume's vector store to find the most relevant matching piece of experience.
-5.  **Generate (The "G" in RAG):** The `google/gemma-2-2b-it` model is used to generate text based on two distinct scenarios:
+5.  **Generate (The "G" in RAG):** The `llama-3.1-8b-instant` model is used to generate text based on two distinct scenarios:
     * **For Matches:** An LLM prompt is sent: "The JD requires 'React Hooks,' and the resume mentions 'React projects.' Please generate a specific technical question about this."
     * **For Gaps:** When a JD requirement has no good match (a high distance score), a different prompt is sent: "The JD requires 'Docker,' but the resume doesn't mention it. Please generate a probing question *and* a resume improvement suggestion."
 6.  **Respond:** The final lists of questions and suggestions are de-duplicated and returned to the user in a clean JSON format.
@@ -33,10 +33,10 @@ This project is more than just a simple prompt. It uses a complete RAG pipeline 
 ## 🛠️ Tech Stack
 
 * **Backend Framework:** FastAPI
-* **LLM:** `google/gemma-2-2b-it` (loaded via `transformers`)
-* **Embedding Model:** `sentence-transformers/all-MiniLM-L6-v2`
+* **LLM:** `llama-3.1-8b-instant` (loaded via `groq`)
+* **Embedding Model:** `BAAI/bge-small-en-v1.5`
 * **Vector Store:** `faiss-cpu`
-* **Core Libraries:** `torch`, `bitsandbytes`, `pydantic`, `python-multipart`
+* **Core Libraries:** `groq`, `pydantic`, `python-multipart`
 * **PDF Handling:** `pypdf` (or similar utility)
 
 ---
@@ -47,7 +47,6 @@ This project is more than just a simple prompt. It uses a complete RAG pipeline 
 
 * Python 3.9+
 * `pip` and `venv`
-* A CUDA-enabled GPU is highly recommended (for running the models)
 
 ### 1. Clone the Repository
 
@@ -66,25 +65,6 @@ source venv/bin/activate
 .\venv\Scripts\activate
 
 ### 3. Install Dependencies
-Create a requirements.txt file with the core dependencies and install them.
-
-requirements.txt
-
-fastapi
-uvicorn[standard]
-torch
-transformers
-bitsandbytes
-sentence-transformers
-faiss-cpu
-python-multipart
-# Add your PDF extraction library, e.g., pypdf
-pypdf
-accelerate
-pydantic
-
-Install
-
 pip install -r requirements.txt
 
 ### 4. Run the server

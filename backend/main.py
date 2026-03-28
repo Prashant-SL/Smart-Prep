@@ -1,14 +1,10 @@
 import os
 import logging
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, logger
-from sentence_transformers import SentenceTransformer
-import torch
 import tempfile
-import numpy as np
 from utils.text_cleaner import clean_text, chunk_text, extract_numbered_questions
 from utils.pdf_extractor import extract_text_from_pdf
 from dotenv import load_dotenv
-from groq import Groq
 from services.rag_service import generate_questions_with_rag
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -16,19 +12,12 @@ load_dotenv()
 
 app = FastAPI()
 
-origins = [
-    "http://localhost:5173",  # Your Vite app's address
-    "http://localhost:8000",  # Just in case
-    "http://localhost",
-    "http://127.0.0.1:8000"
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=[os.environ.get("ALLOWED_ORIGINS")],
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=[os.environ.get("ALLOWED_METHODS")],
+    allow_headers=[os.environ.get("ALLOWED_HEADERS")],
 )
 
 # Logging configuration
@@ -38,16 +27,6 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger("app")
-
-try:
-    groq_client = Groq(
-        api_key=os.environ.get("GROQ_API_KEY")
-    )
-    logger.info("Groq client initalised successfully!")
-except Exception as error:
-    logger.error(f"Error initalizing Groq: {error}")
-    groq_client = None
-
 
 @app.get("/health")
 def health_check():

@@ -1,287 +1,174 @@
 import { useState } from "react";
-import axios from "axios";
-import {
-  Typography,
-  message,
-  Upload,
-  Tabs,
-  Spin,
-  Alert,
-} from "antd";
-import ResumeUploadContainer from "./components/ResumeUploadContainer.jsx";
-import ResumeResponseContainer from "./components/ResumeResponseContainer.jsx";
+import "./App.css";
 
-const { Title } = Typography;
+import Tabs from "./components/ui/Tabs";
+import ResultDisplay from "./components/features/result-display/ResultDisplay";
+import FileUpload from "./components/features/resume-form/FileUpload";
+import Card from "./components/ui/Card";
+import Input from "./components/ui/Input";
+import Textarea from "./components/ui/Textarea";
+import Button from "./components/ui/Button";
+import LoadingSkeleton from "./components/ui/LoadingSkeleton";
+import { AlertCircle } from "lucide-react";
+import { uploadResume } from "./services/api";
 
-// const ResumeUploadContainer = ({
-//   props,
-//   role,
-//   setRole,
-//   resumeFile,
-//   jd,
-//   onJDInputChange,
-//   startAnalyze,
-//   loading,
-// }) => {
-//   return (
-//     <div key="form-container" style={{ padding: "16px 24px" }}>
-//       <header>
-//         <Title level={2} style={{ textAlign: "center", marginBottom: "2rem" }}>
-//           Smart Prep
-//         </Title>
-//         <Text
-//           style={{
-//             textAlign: "center",
-//             display: "block",
-//             fontSize: "16px",
-//             marginBottom: "2rem",
-//           }}
-//         >
-//           Your personal AI interview coach. Paste your resume, job description,
-//           and role to get started.
-//         </Text>
-//       </header>
-
-//       <div
-//         style={{
-//           display: "flex",
-//           flexDirection: "row",
-//           gap: "24px",
-//           marginBottom: "1.5rem",
-//         }}
-//       >
-//         {/* Left Column */}
-//         <section style={{ flex: 1 }}>
-//           <Title level={5}>1. Upload Your Resume</Title>
-//           <Dragger {...props}>
-//             <p className="ant-upload-drag-icon">
-//               <InboxOutlined />
-//             </p>
-//             <p className="ant-upload-text">
-//               Click or drag your PDF resume to this area
-//             </p>
-//           </Dragger>
-//         </section>
-
-//         {/* Right Column */}
-//         <section style={{ flex: 1 }}>
-//           <Title level={5}>2. Paste the Job Description</Title>
-//           <TextArea
-//             value={jd}
-//             onChange={onJDInputChange}
-//             rows={10}
-//             placeholder="Paste the full job description here..."
-//           />
-//         </section>
-//       </div>
-
-//       {/* Bottom Row */}
-//       <section style={{ marginBottom: "1.5rem" }}>
-//         <Title level={5}>3. Enter Your Target Role</Title>
-//         <Input
-//           value={role}
-//           onChange={(e) => setRole(e.target.value)}
-//           placeholder="e.g., Senior Frontend Developer"
-//           size="large"
-//         />
-//       </section>
-
-//       <section style={{ textAlign: "center", margin: "2rem 0" }}>
-//         <Button
-//           type="primary"
-//           size="large"
-//           onClick={startAnalyze}
-//           loading={loading}
-//           disabled={!resumeFile || !jd || !role}
-//         >
-//           {loading ? "Analyzing..." : "Analyze My Application"}
-//         </Button>
-//       </section>
-//     </div>
-//   );
-// };
-
-// const ResumeResponseContainer = ({ output }) => {
-//   const { interview_questions, improvement_suggestions } = output;
-
-//   // Handles the new object format: { experience_based: [], gap_analysis: [] }
-//   const renderQuestionPanels = (questionsList) => {
-//     if (!questionsList || questionsList.length === 0) {
-//       return <Text>No questions generated for this category.</Text>;
-//     }
-//     return questionsList.map((question, index) => (
-//       <Collapse defaultActiveKey={["exp"]} accordion>
-//         <Panel header={`Question ${index + 1}`} key={index}>
-//           <p key={index}>{question}</p>
-//         </Panel>
-//       </Collapse>
-//     ));
-//   };
-
-//   return (
-//     <div
-//       style={{
-//         width: "100%",
-//         display: "flex",
-//         flexDirection: "row",
-//         gap: "24px",
-//         padding: "24px",
-//       }}
-//     >
-//       {/* Left Column: Questions */}
-//       <div style={{ flex: 2 }}>
-//         <Title level={4}>
-//           <QuestionCircleOutlined /> Interview Questions
-//         </Title>
-//         {/* <Collapse defaultActiveKey={["exp"]} accordion> */}
-//         {/* <Panel header="Experience-Based Questions" key="exp"> */}
-//         {renderQuestionPanels(interview_questions)}
-//         {/* </Panel> */}
-//         {/* </Collapse> */}
-//       </div>
-
-//       {/* Right Column: Suggestions */}
-//       <div style={{ flex: 1 }}>
-//         <Title level={4}>
-//           <BulbOutlined /> Resume Suggestions
-//         </Title>
-//         {!improvement_suggestions || improvement_suggestions.length === 0 ? (
-//           <Text>Your resume looks well-aligned! No specific suggestions.</Text>
-//         ) : (
-//           <Collapse defaultActiveKey={["0"]}>
-//             {improvement_suggestions?.map((suggestion, index) => (
-//               <Panel header={`Suggestion ${index + 1}`} key={index}>
-//                 <p>{suggestion}</p>
-//               </Panel>
-//             ))}
-//           </Collapse>
-//         )}
-//       </div>
-//     </div>
-//   );
-// };
-
-function App() {
+export default function App() {
+  const [activeTab, setActiveTab] = useState("input");
   const [loading, setLoading] = useState(false);
-  const [resumeFile, setResumeFile] = useState(null);
-  const [jd, setJd] = useState("");
-  const [role, setRole] = useState("");
-  const [activeTab, setActiveTab] = useState("0");
-  const [resumeOutput, setResumeOutput] = useState(null);
-  const [apiError, setApiError] = useState(null);
+  const [error, setError] = useState(null);
+  const [result, setResult] = useState(null);
 
-  const draggerProps = {
-    name: "file",
-    multiple: false,
-    accept: "application/pdf",
-    beforeUpload(file) {
-      const isPDF = file.type === "application/pdf";
-      if (!isPDF) {
-        message.error("Only PDF files are allowed.");
-        return Upload.LIST_IGNORE;
-      }
-      setResumeFile(file);
-      return false;
-    },
-    onRemove() {
-      setResumeFile(null);
-    },
+  const [formData, setFormData] = useState({
+    file: null,
+    jobDescription: "",
+    role: "",
+  });
+  const [formErrors, setFormErrors] = useState({});
+
+  const validateForm = () => {
+    const errors = {};
+    if (!formData.file) errors.file = "Please upload a PDF resume";
+    if (!formData.jobDescription.trim())
+      errors.jobDescription = "Job description is required";
+    if (!formData.role.trim()) errors.role = "Desired role is required";
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
-  const onJDInputChange = (e) => {
-    setJd(e.target.value);
-  };
-
-  const startAnalyze = async () => {
-    if (!resumeFile || !jd || !role) {
-      message.warning("Please fill in all three fields.");
-      return;
-    }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
 
     setLoading(true);
-    setApiError(null);
-    setResumeOutput(null);
-
-    const formData = new FormData();
-    formData.append("file", resumeFile);
-    formData.append("job_description", jd);
-    formData.append("desired_role", role);
+    setError(null);
 
     try {
-      const response = await axios.post(
-        import.meta.env.VITE_BACKEND_APP_BASE_URL + "/upload-resume",
-        formData
-      );
-
-      console.log("response.data", response.data);
-      setResumeOutput(response.data);
-      setActiveTab("1");
-    } catch (error) {
-      console.error("Error analyzing resume:", error);
-      setApiError(
-        "Failed to analyze resume. Please check the backend server and try again."
-      );
-      message.error("An error occurred. Please try again.");
+      const response = await uploadResume(formData);
+      setResult(response);
+      setActiveTab("result");
+    } catch (err) {
+      setError(err.message || "An unexpected error occurred");
+      setActiveTab("input");
     } finally {
       setLoading(false);
     }
   };
 
-  const tabsGroup = [
-    { label: "Prepare Application", key: "0" },
-    { label: "Review Your Plan", key: "1" },
-  ];
-
-  const tabContent = {
-    0: (
-      <ResumeUploadContainer
-        props={draggerProps}
-        role={role}
-        setRole={setRole}
-        jd={jd}
-        onJDInputChange={onJDInputChange}
-        startAnalyze={startAnalyze}
-        loading={loading}
-        resumeFile={resumeFile}
-      />
-    ),
-    1: (
-      <div style={{ padding: "24px", minHeight: "400px" }}>
-        {loading && (
-          <div style={{ textAlign: "center", marginTop: "4rem" }}>
-            <Spin size="large" />
-            <Title level={5} style={{ marginTop: "1rem" }}>
-              Analyzing... This may take a moment.
-            </Title>
-          </div>
-        )}
-        {apiError && (
-          <Alert message="Error" description={apiError} type="error" showIcon />
-        )}
-        {resumeOutput && !loading && (
-          <ResumeResponseContainer output={resumeOutput} />
-        )}
-      </div>
-    ),
-  };
-
   return (
-    <div style={{ width: "80vw", margin: "2rem auto" }}>
-      <Tabs
-        activeKey={activeTab}
-        centered
-        onTabClick={(key) => setActiveTab(key)}
-        items={tabsGroup.map((tab) => {
-          return {
-            label: tab.label,
-            key: tab.key,
-            children: tabContent[tab.key],
-            disabled: tab.key === "1" && !resumeOutput && !loading,
-          };
-        })}
-      />
+    <div className="min-h-screen bg-[#edf6f9] text-[#006d77] font-sans selection:bg-[#e29578] selection:text-[#edf6f9]">
+      {/* Background decoration */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-[#ffddd2]/60 to-transparent opacity-70"></div>
+        <div className="absolute -top-20 -right-20 w-96 h-96 bg-[#83c5be]/20 rounded-full blur-3xl"></div>
+        <div className="absolute top-40 -left-20 w-72 h-72 bg-[#e29578]/15 rounded-full blur-3xl"></div>
+      </div>
+
+      <div className="relative z-10 container mx-auto px-4 py-12 max-w-5xl">
+        {/* Header */}
+        <header className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 text-[#006d77]">
+            GenAI Resume Analyzer
+          </h1>
+          <p className="text-[#83c5be] max-w-2xl mx-auto text-lg">
+            Upload your resume and job description to get AI-powered interview
+            questions and improvement suggestions tailored to your target role.
+          </p>
+        </header>
+
+        {/* Main Content */}
+        <main>
+          <Tabs
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            hasResult={!!result}
+          />
+
+          <div className="transition-all duration-300">
+            {activeTab === "input" ? (
+              <div className="max-w-2xl mx-auto animate-in fade-in zoom-in-95 duration-300">
+                <Card className="p-8">
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <FileUpload
+                      file={formData.file}
+                      onFileChange={(file) =>
+                        setFormData((prev) => ({ ...prev, file }))
+                      }
+                      error={formErrors.file}
+                    />
+
+                    <Input
+                      id="role"
+                      label="Desired Role"
+                      placeholder="e.g. Senior Frontend Engineer"
+                      value={formData.role}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          role: e.target.value,
+                        }))
+                      }
+                      error={formErrors.role}
+                    />
+
+                    <Textarea
+                      id="jd"
+                      label="Job Description"
+                      placeholder="Paste the full job description here..."
+                      value={formData.jobDescription}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          jobDescription: e.target.value,
+                        }))
+                      }
+                      error={formErrors.jobDescription}
+                    />
+
+                    <div className="pt-4">
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        isLoading={loading}
+                      >
+                        Analyze Resume
+                      </Button>
+                    </div>
+                  </form>
+                </Card>
+              </div>
+            ) : (
+              <div>
+                {loading ? (
+                  <LoadingSkeleton />
+                ) : error ? (
+                  <div className="text-center py-12">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#e29578]/20 text-[#e29578] mb-4">
+                      <AlertCircle className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-[#006d77] mb-2">
+                      Analysis Failed
+                    </h3>
+                    <p className="text-[#83c5be] mb-6">{error}</p>
+                    <Button
+                      variant="secondary"
+                      onClick={() => setActiveTab("input")}
+                    >
+                      Try Again
+                    </Button>
+                  </div>
+                ) : (
+                  <ResultDisplay data={result} />
+                )}
+              </div>
+            )}
+          </div>
+        </main>
+
+        <footer className="mt-20 text-center text-sm text-[#83c5be]">
+          <p>&copy; 2026 | SmartPrep — GenAI Resume Analyzer</p>
+        </footer>
+      </div>
     </div>
   );
 }
-
-export default App;

@@ -1,14 +1,14 @@
-# In services.py
 import logging
 import os
-import torch
 import faiss
 import numpy as np
 from typing import Tuple, Dict
-from sentence_transformers import SentenceTransformer
 
 from utils.text_cleaner import chunk_text, extract_numbered_questions
 from groq import Groq, APIError
+from fastembed import TextEmbedding
+from numpy.linalg import norm
+import numpy as np
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -16,12 +16,7 @@ load_dotenv()
 # --- Logger ---
 logger = logging.getLogger("app")
 
-GROQ_CHAT_MODEL = "llama-3.1-8b-instant"
-
-
-
-embedding_model_name = "sentence-transformers/all-MiniLM-L6-v2"
-embedding_model = SentenceTransformer(embedding_model_name, device = 'cuda' if torch.cuda.is_available() else 'cpu')
+embedding_model = TextEmbedding(model_name=os.environ.get("TEXT_EMBEDDING_MODEL"))
 
 try:
     groq_client = Groq(
@@ -35,7 +30,6 @@ except Exception as error:
 def generate_questions_with_rag(resume: str, jd: str, role: str) -> tuple[list[str], list[str]]:
     """
     Generates interview questions using a RAG approach.
-    Wraps prompts in Gemma-2's required chat tokens.
     """
     logger.info("Starting RAG generation...")
     
@@ -55,9 +49,7 @@ def generate_questions_with_rag(resume: str, jd: str, role: str) -> tuple[list[s
     
     # 2. Resume chunks embedding to vector store
     try:
-        resume_embeddings = embedding_model.encode(resume_chunks)
-        if resume_embeddings.dtype != np.float32:
-                resume_embeddings = resume_embeddings.astype(np.float32)
+        resume_embeddings = np.array(list(embedding_model.embed(resume_chunks)), dtype=np.float32)
 
         d = resume_embeddings.shape[1]
         index = faiss.IndexFlatL2(d)
@@ -82,6 +74,9 @@ def generate_questions_with_rag(resume: str, jd: str, role: str) -> tuple[list[s
     # --- 3. NEW: Combined RAG Loop (Match, Gap, Suggestion) ---
     logger.info("--- Starting Combined RAG Loop ---")
     
+    def cosine_similarity(a, b):
+        return np.dot(a, b) / (norm(a) * norm(b))
+    
     for i, jd_chunk in enumerate(jd_chunks):
         try:
             # Check if all our limits are already met
@@ -91,9 +86,16 @@ def generate_questions_with_rag(resume: str, jd: str, role: str) -> tuple[list[s
                 logger.info("All generation limits reached. Breaking loop early.")
                 break
 
-            query_embedding = embedding_model.encode([jd_chunk])
-            if query_embedding.dtype != np.float32:
-                query_embedding = query_embedding.astype(np.float32)
+            query_emb_list = list(embedding_model.embed([jd_chunk]))
+            query_embedding = np.array(query_emb_list, dtype=np.float32) # Shape (1, dim)
+            query_emb_flat = query_embedding[0]
+            
+            similarities = [cosine_similarity(query_emb_flat, r) for r in resume_embeddings]
+            best_idx = int(np.argmax(similarities))
+            best_score = similarities[best_idx]
+            
+            query_emb_list = list(embedding_model.embed([jd_chunk]))
+            query_embedding = np.array(query_emb_list, dtype=np.float32)
 
             distances, indices = index.search(query_embedding, k=1)
             
@@ -115,9 +117,9 @@ def generate_questions_with_rag(resume: str, jd: str, role: str) -> tuple[list[s
                     try:
                         output = groq_client.chat.completions.create(
                             messages = messages,
-                            model = GROQ_CHAT_MODEL,
+                            model = os.environ.get("GROQ_CHAT_MODEL"),
                             temperature = 0.0,
-                            max_tokens = 100
+                            max_tokens = 200
                         )
                         generated_text = output.choices[0].message.content
                         logger.info(f"[Match Loop] LLM Raw Output: {generated_text}")
@@ -143,7 +145,7 @@ def generate_questions_with_rag(resume: str, jd: str, role: str) -> tuple[list[s
                     ]
                     try:
                         output = groq_client.chat.completions.create(
-                            messages = messages, model = GROQ_CHAT_MODEL, temperature = 0.2, max_tokens = 100
+                            messages = messages, model = os.environ.get("GROQ_CHAT_MODEL"), temperature = 0.2, max_tokens = 100
                         )
                         generated_text = output.choices[0].message.content
                         questions = extract_numbered_questions(generated_text, max_questions=1)
@@ -162,7 +164,7 @@ def generate_questions_with_rag(resume: str, jd: str, role: str) -> tuple[list[s
                     ]
                     try:
                         output = groq_client.chat.completions.create(
-                            messages=messages, model=GROQ_CHAT_MODEL, temperature=0.0, max_tokens=100
+                            messages = messages, model = os.environ.get("GROQ_CHAT_MODEL"), temperature = 0.0, max_tokens = 100
                         )
                         suggestion_text = output.choices[0].message.content.strip()
                         if suggestion_text and len(suggestion_text) > 20: # Basic filter
